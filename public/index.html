@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale-1.0">
+    <title>Manager de Futebol</title>
+
+    <!-- Nosso CSS -->
+    <style>
+        /* Estilos Globais (body, h1, etc) */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+
+        /* --- TELA 1: SELEÇÃO DE TIME --- */
+        #team-selection-screen h1 { text-align: center; color: #1a237e; }
+        #search-bar {
+            display: block; width: 90%; max-width: 1200px;
+            margin: 20px auto; padding: 12px 15px; font-size: 1.1em;
+            border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; 
+        }
+        #loading { text-align: center; font-size: 1.2em; color: #666; }
+        #teams-list {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px; max-width: 1200px; margin: 0 auto;
+        }
+        .team-card {
+            background-color: #ffffff; border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow: hidden;
+            transition: all 0.3s ease; display: flex; flex-direction: column;
+        }
+        .team-card-header {
+            display: flex; align-items: center; gap: 15px;
+            padding: 15px 20px; border-bottom: 2px solid #eee;
+        }
+        .team-logo {
+            width: 50px; height: 50px; border-radius: 50%; 
+            color: #ffffff; font-size: 1.2em; font-weight: bold;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
+        }
+        .team-card h2 { margin: 0; color: #0d47a1; font-size: 1.4em; }
+        .team-players-list { padding: 0 20px 10px 20px; flex-grow: 1; }
+        .team-players-list ul { list-style: none; padding-left: 0; margin-bottom: 0; }
+        .team-players-list li {
+            padding: 8px 0; border-bottom: 1px solid #f9f9f9;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .player-item { cursor: pointer; transition: background-color 0.2s; }
+        .player-item:hover { background-color: #f9f9f9; }
+        .team-card .player-name { font-weight: 500; }
+        .team-card .player-position { font-size: 0.9em; color: #555; margin-left: 10px; }
+        .team-card .player-overall {
+            font-weight: bold; color: #1565c0; background-color: #e3f2fd;
+            padding: 2px 6px; border-radius: 4px;
+        }
+        .team-card-footer {
+            padding: 15px 20px; background-color: #fcfcfc; border-top: 1px solid #f0f0f0; text-align: center;
+        }
+        .train-team-button {
+            background-color: #28a745; color: white; border: none;
+            padding: 10px 15px; font-size: 1em; font-weight: bold;
+            border-radius: 5px; cursor: pointer; width: 100%;
+            transition: background-color 0.2s;
+        }
+        .train-team-button:hover { background-color: #218838; }
+
+        /* --- TELA 2: DASHBOARD DO MANAGER --- */
+        #manager-dashboard {
+            display: none; padding: 20px; max-width: 1200px; margin: 0 auto;
+            background-color: #fff; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        #manager-dashboard-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid #eee; padding-bottom: 15px;
+            gap: 15px;
+        }
+        #manager-dashboard-header h1 { color: #1a237e; margin: 0; text-align: left; flex-grow: 1; }
+        
+        /* <!-- NOVO CSS: Painel de Informações (Orçamento, Semana, Botões) --> */
+        #manager-info {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        #manager-stats {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        #manager-budget {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2e7d32; /* Verde */
+        }
+        #current-week {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #555;
+            padding: 5px 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+        }
+        #manager-actions {
+            display: flex;
+            gap: 10px;
+        }
+        #advance-week-button {
+            background-color: #007bff; color: white; border: none;
+            padding: 10px 15px; font-size: 0.9em; font-weight: bold;
+            border-radius: 5px; cursor: pointer; transition: background-color 0.2s;
+        }
+        #advance-week-button:hover { background-color: #0056b3; }
+
+        #reset-team-button {
+            background-color: #dc3545; color: white; border: none;
+            padding: 10px 15px; font-size: 0.9em; font-weight: bold;
+            border-radius: 5px; cursor: pointer; transition: background-color 0.2s;
+        }
+        #reset-team-button:hover { background-color: #c82333; }
+
+        /* Sistema de Abas (Tabs) */
+        .tabs-nav {
+            display: flex; gap: 5px; border-bottom: 2px solid #ddd; margin-top: 20px;
+        }
+        .tab-button {
+            padding: 10px 20px; cursor: pointer; border: none;
+            background-color: #f1f1f1; border-radius: 5px 5px 0 0;
+            font-size: 1em; font-weight: 600; color: #555;
+            transition: all 0.2s;
+        }
+        .tab-button.active { background-color: #1a237e; color: white; }
+        .tab-button:hover:not(.active) { background-color: #e0e0e0; }
+        .tab-content { display: none; padding-top: 20px; }
+        .tab-content.active { display: block; }
+        
+        /* Tabelas (Elenco e Mercado) */
+        .player-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1em;
+            table-layout: fixed; 
+        }
+        .player-table th, .player-table td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            word-wrap: break-word; 
+        }
+        .player-table th {
+            background-color: #f4f6f8;
+            font-weight: 600;
+            color: #333;
+        }
+        .player-table tbody tr:hover {
+            background-color: #f9f9f9;
+        }
+        .player-table .player-name-cell {
+            font-weight: bold;
+            color: #0d47a1;
+        }
+        .player-table .player-overall-cell {
+            font-weight: bold;
+            font-size: 1.1em;
+            text-align: center;
+        }
+        .player-table .player-value-cell {
+            font-weight: 500;
+            color: #111;
+            font-size: 0.95em;
+        }
+        
+        /* Botões de Ação (Comprar/Vender) */
+        .action-button {
+            border: none;
+            padding: 8px 12px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            color: white;
+            width: 100%;
+        }
+        .buy-player-button { background-color: #28a745; }
+        .buy-player-button:hover { background-color: #218838; }
+        .sell-player-button { background-color: #ffc107; color: #333; }
+        .sell-player-button:hover { background-color: #e0a800; }
+        
+        /* Barra de Busca do Mercado */
+        #market-search-bar {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 10px 12px;
+            font-size: 1em;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        /* --- Estilos do Modal (Jogador) --- */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.6); opacity: 0; transition: opacity 0.3s ease; }
+        .modal.show { display: flex; align-items: center; justify-content: center; opacity: 1; }
+        .modal-content { background-color: #fff; margin: auto; padding: 20px; border-radius: 10px; width: 90%; max-width: 450px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transform: scale(0.9); transition: transform 0.3s ease; }
+        .modal.show .modal-content { transform: scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        .modal-header h2 { margin: 0; color: #333; }
+        .modal-header .overall { font-size: 1.5em; font-weight: bold; color: #1565c0; }
+        .close-button { color: #aaa; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-button:hover { color: #333; }
+        .modal-body { padding-top: 15px; }
+        .modal-body .team-name { font-size: 1.1em; font-weight: bold; color: #555; margin-bottom: 10px; }
+        .modal-body .player-value { font-size: 1em; color: #333; margin-bottom: 5px; } /* ATUALIZADO */
+        .modal-body .player-salary { font-size: 1em; color: #333; margin-bottom: 15px; } /* NOVO */
+        .attributes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .attribute-item { display: flex; justify-content: space-between; font-size: 1em; padding: 8px; background-color: #f9f9f9; border-radius: 5px; }
+        .attribute-item span:first-child { text-transform: capitalize; font-weight: 500; color: #444; }
+        .attribute-item span:last-child { font-weight: bold; color: #222; }
+
+        /* --- Estilos do Modal de Notificação --- */
+        #notification-modal {
+            display: none; 
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 2000;
+            font-size: 1.1em;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s ease, top 0.3s ease;
+        }
+        #notification-modal.show {
+            display: block;
+            opacity: 1;
+            top: 40px;
+        }
+        /* <!-- NOVO CSS: Cores da Notificação --> */
+        #notification-modal.error { background-color: #dc3545; } /* Vermelho */
+        #notification-modal.success { background-color: #28a745; } /* Verde */
+        #notification-modal.info { background-color: #007bff; } /* Azul */
+
+    </style>
+</head>
+<body>
+
+    <!-- TELA 1: SELEÇÃO DE TIME (sem mudanças) -->
+    <div id="team-selection-screen">
+        <h1>Escolha seu Time</h1>
+        <input type="text" id="search-bar" placeholder="Buscar por time ou jogador...">
+        <div id="teams-list">
+            <p id="loading">Carregando dados da API...</p>
+        </div>
+    </div>
+
+    <!-- TELA 2: DASHBOARD DO MANAGER (ATUALIZADO) -->
+    <div id="manager-dashboard">
+        <!-- Cabeçalho ATUALIZADO com Orçamento, Semana e Botões -->
+        <div id="manager-dashboard-header">
+            <h1 id="dashboard-title">Gerenciando: [Nome do Time]</h1>
+            <div id="manager-info">
+                <div id="manager-stats">
+                    <span id="current-week">Semana: 1</span> <!-- NOVO -->
+                    <span id="manager-budget">Orçamento: R$ 0,00</span>
+                </div>
+                <div id="manager-actions">
+                    <button id="advance-week-button">Avançar Semana</button> <!-- NOVO -->
+                    <button id="reset-team-button">Escolher outro time</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navegação das Abas (sem mudanças) -->
+        <nav class="tabs-nav">
+            <button class="tab-button active" data-tab="squad">Meu Elenco</button>
+            <button class="tab-button" data-tab="market">Mercado</button>
+        </nav>
+
+        <!-- Conteúdo das Abas -->
+        
+        <!-- Aba 1: Meu Elenco (ATUALIZADA) -->
+        <div id="tab-squad" class="tab-content active">
+            <h2>Meu Elenco Atual</h2>
+            <table id="squad-table" class="player-table">
+                <thead>
+                    <tr>
+                        <th>Pos.</th>
+                        <th>Nome</th>
+                        <th>Geral</th>
+                        <th>Valor</th>
+                        <th>Salário</th> <!-- NOVO -->
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="squad-table-body">
+                    <!-- Jogadores serão inseridos aqui pelo JS -->
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Aba 2: Mercado (ATUALIZADA) -->
+        <div id="tab-market" class="tab-content">
+            <h2>Mercado de Transferências</h2>
+            <input type="text" id="market-search-bar" placeholder="Buscar jogador no mercado...">
+            <table id="market-table" class="player-table">
+                <thead>
+                    <tr>
+                        <th>Pos.</th>
+                        <th>Nome</th>
+                        <th>Time</th>
+                        <th>Geral</th>
+                        <th>Valor</th>
+                        <th>Salário</th> <!-- NOVO -->
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="market-table-body">
+                    <!-- Jogadores do mercado serão inseridos aqui pelo JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- Estrutura do Modal (Jogador) (ATUALIZADO) -->
+    <div id="player-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="modal-player-name">Nome do Jogador</h2>
+                    <span id="modal-player-position" style="color: #666;">Posição</span>
+                </div>
+                <span id="modal-player-overall" class="overall" title="Geral">99</span>
+            </div>
+            <div class="modal-body">
+                <p id="modal-team-name" class="team-name">Nome do Time</p>
+                <p id="modal-player-value" class="player-value">Valor: R$ 0,00</p>
+                <p id="modal-player-salary" class="player-salary">Salário: R$ 0,00 / semana</p> <!-- NOVO -->
+                <div id="modal-attributes-grid" class="attributes-grid">
+                    <!-- Atributos serão inseridos aqui pelo JavaScript -->
+                </div>
+            </div>
+            <span id="close-modal-button" class="close-button" style="position: absolute; top: 10px; right: 20px;">&times;</span>
+        </div>
+    </div>
+    
+    <!-- Modal de Notificação -->
+    <div id="notification-modal">
+        <span id="notification-message">Mensagem de erro!</span>
+    </div>
+
+
+    <!-- 
+      ============================================
+      ATUALIZAÇÃO GERAL: Nosso JavaScript (Fase 7)
+      ============================================
+    -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- Seletores de Elementos ---
+            // ... (seletores antigos)
+            const teamSelectionScreen = document.getElementById('team-selection-screen');
+            const teamsListContainer = document.getElementById('teams-list');
+            const loadingMessage = document.getElementById('loading');
+            const searchBar = document.getElementById('search-bar');
+            const managerDashboard = document.getElementById('manager-dashboard');
+            const dashboardTitle = document.getElementById('dashboard-title');
+            const resetButton = document.getElementById('reset-team-button');
+            const tabsNav = document.querySelector('.tabs-nav');
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const squadTableBody = document.getElementById('squad-table-body');
+            const marketSearch = document.getElementById('market-search-bar');
+            const marketTableBody = document.getElementById('market-table-body');
+            const modal = document.getElementById('player-modal');
+            const modalPlayerName = document.getElementById('modal-player-name');
+            const modalPlayerPosition = document.getElementById('modal-player-position');
+            const modalPlayerOverall = document.getElementById('modal-player-overall');
+            const modalTeamName = document.getElementById('modal-team-name');
+            const modalAttributesGrid = document.getElementById('modal-attributes-grid');
+            const closeModalButton = document.getElementById('close-modal-button');
+            
+            // --- Seletores (Fase 6 e 7) ---
+            const managerBudgetDisplay = document.getElementById('manager-budget');
+            const modalPlayerValue = document.getElementById('modal-player-value');
+            const notificationModal = document.getElementById('notification-modal');
+            const notificationMessage = document.getElementById('notification-message');
+            const currentWeekDisplay = document.getElementById('current-week'); // NOVO
+            const advanceWeekButton = document.getElementById('advance-week-button'); // NOVO
+            const modalPlayerSalary = document.getElementById('modal-player-salary'); // NOVO
+
+            // --- Variáveis Globais de Estado ---
+            let allTeamsData = []; 
+            let myClubData = null; 
+            let myClubId = null; 
+            let gameWeek = 1; // NOVO
+
+            const teamColors = [
+                '#D32F2F', '#C2185B', '#7B1FA2', '#512DA8', '#303F9F', '#0288D1', '#0097A7', 
+                '#00796B', '#388E3C', '#689F38', '#AFB42B', '#FBC02D', '#FFA000', '#F57C00', 
+                '#E64A19', '#5D4037', '#616161', '#455A64', '#1a237e', '#880e4f', '#004d40', '#bf360c'
+            ];
+            
+            // Chaves do "Save Game"
+            const SAVE_KEY_MY_CLUB_ID = 'myClubId';
+            const SAVE_KEY_LEAGUE_STATE = 'leagueState';
+            const SAVE_KEY_GAME_WEEK = 'gameWeek'; // NOVO
+
+            // --- INICIALIZAÇÃO DO APP (LÓGICA ATUALIZADA) ---
+            initializeApp();
+
+
+            async function initializeApp() {
+                // 1. Tenta carregar o "save"
+                const myClubIdJson = localStorage.getItem(SAVE_KEY_MY_CLUB_ID);
+                const leagueStateJson = localStorage.getItem(SAVE_KEY_LEAGUE_STATE);
+                const gameWeekJson = localStorage.getItem(SAVE_KEY_GAME_WEEK); // NOVO
+                
+                if (myClubIdJson && leagueStateJson) {
+                    // ESTADO: Jogo Salvo Existe
+                    try {
+                        allTeamsData = JSON.parse(leagueStateJson);
+                        myClubId = parseInt(myClubIdJson);
+                        gameWeek = gameWeekJson ? parseInt(gameWeekJson) : 1; // NOVO
+                        
+                        myClubData = allTeamsData.find(t => t.team_id === myClubId);
+                        
+                        if (!myClubData) { throw new Error("Save corrompido."); }
+                        
+                        // Garante que o save antigo (Fase 6) seja compatível
+                        validateSaveData();
+                        
+                        showManagerDashboard(myClubData);
+
+                    } catch (error) {
+                        console.error("Falha ao carregar save. Resetando...", error);
+                        resetGame();
+                    }
+                    
+                } else {
+                    // ESTADO: Novo Jogo (Primeira vez)
+                    try {
+                        const response = await fetch('/api/teams');
+                        if (!response.ok) { throw new Error(`Erro HTTP: ${response.status}`); }
+                        
+                        allTeamsData = await response.json(); 
+                        
+                        // Garante que os dados da API estão corretos
+                        validateSaveData();
+                        
+                        showTeamSelection();
+
+                    } catch (error) {
+                        console.error('Falha ao buscar dados da API:', error);
+                        loadingMessage.textContent = 'Falha ao carregar dados. O servidor (server.js) está rodando?';
+                        loadingMessage.style.color = 'red';
+                    }
+                }
+            }
+            
+            // --- NOVO: Função de fallback (garante compatibilidade com saves antigos) ---
+            function validateSaveData() {
+                 allTeamsData.forEach(team => {
+                    team.budget = team.budget || getRandomInt(20, 100) * 1000000;
+                    team.players.forEach(player => {
+                        player.original_team_id = player.original_team_id || team.team_id;
+                        player.value = player.value || calculatePlayerValue(player.attributes.geral, player.age);
+                        player.salary = player.salary || calculateSalary(player.value); // GARANTE O SALÁRIO
+                    });
+                });
+            }
+            
+            // Funções de fallback (caso o JSON seja antigo)
+            function calculatePlayerValue(geral, age) {
+                let baseValue = Math.pow(geral / 10, 3) * 10000; 
+                let ageMultiplier = 1.0;
+                if (age < 21) { ageMultiplier = 2.0; } else if (age < 25) { ageMultiplier = 1.5; } 
+                else if (age < 30) { ageMultiplier = 1.0; } else if (age < 34) { ageMultiplier = 0.7; } 
+                else { ageMultiplier = 0.3; }
+                let value = Math.floor((baseValue * ageMultiplier) / 1000) * 1000;
+                return value < 50000 ? 50000 : value;
+            }
+            function calculateSalary(value) {
+                const weeklySalary = Math.floor((value * 0.005) / 10) * 10;
+                return weeklySalary < 100 ? 100 : weeklySalary;
+            }
+            
+            // Função para formatar dinheiro
+            function formatCurrency(value) {
+                if (value >= 1000000) {
+                    return `R$ ${(value / 1000000).toFixed(1)}M`;
+                }
+                if (value >= 1000) {
+                    return `R$ ${(value / 1000).toFixed(0)}k`;
+                }
+                return `R$ ${value.toFixed(2)}`;
+            }
+
+            // --- FUNÇÕES DE CONTROLE DE TELA ---
+
+            function showTeamSelection() {
+                teamSelectionScreen.style.display = 'block';
+                managerDashboard.style.display = 'none';
+                loadingMessage.remove();
+                renderTeams(allTeamsData);
+            }
+
+            // ATUALIZADO: Mostra o orçamento e semana
+            function showManagerDashboard(myClub) {
+                teamSelectionScreen.style.display = 'none';
+                managerDashboard.style.display = 'block';
+                dashboardTitle.textContent = `Gerenciando: ${myClub.team_name}`;
+                managerBudgetDisplay.textContent = `Orçamento: ${formatCurrency(myClub.budget)}`; 
+                currentWeekDisplay.textContent = `Semana: ${gameWeek}`; // NOVO
+                
+                // Renderiza as duas tabelas
+                renderMySquad(myClub);
+                renderTransferMarket(myClub);
+            }
+            
+            // --- FUNÇÕES DE RENDERIZAÇÃO (TELA 2) ---
+            
+            // ATUALIZADO: Mostra o salário
+            function renderMySquad(myClub) {
+                squadTableBody.innerHTML = ''; 
+                const positionOrder = { 'Goleiro': 1, 'Defensor': 2, 'Meio-campista': 3, 'Atacante': 4 };
+                const sortedPlayers = myClub.players.sort((a, b) => {
+                    return positionOrder[a.position] - positionOrder[b.position];
+                });
+
+                sortedPlayers.forEach(player => {
+                    const row = document.createElement('tr');
+                    row.className = 'player-item'; 
+                    row.dataset.teamId = player.original_team_id; 
+                    row.dataset.playerId = player.player_id;
+                    
+                    row.innerHTML = `
+                        <td>${player.position}</td>
+                        <td class="player-name-cell">${player.name}</td>
+                        <td class="player-overall-cell">${player.attributes.geral}</td>
+                        <td class="player-value-cell">${formatCurrency(player.value)}</td>
+                        <td class="player-value-cell">${formatCurrency(player.salary)}/sem</td> <!-- NOVO -->
+                        <td>
+                            <button class="action-button sell-player-button" data-player-id="${player.player_id}">Vender</button>
+                        </td>
+                    `;
+                    squadTableBody.appendChild(row);
+                });
+            }
+
+            // ATUALIZADO: Mostra o salário
+            function renderTransferMarket(myClub) {
+                marketTableBody.innerHTML = ''; 
+                const otherTeams = allTeamsData.filter(team => team.team_id !== myClub.team_id);
+                
+                otherTeams.forEach(team => {
+                    team.players.forEach(player => {
+                        const row = document.createElement('tr');
+                        row.className = 'player-item market-player-row'; 
+                        row.dataset.teamId = player.original_team_id; 
+                        row.dataset.playerId = player.player_id;
+                        
+                        row.innerHTML = `
+                            <td>${player.position}</td>
+                            <td class="player-name-cell">${player.name}</td>
+                            <td>${team.team_name}</td>
+                            <td class="player-overall-cell">${player.attributes.geral}</td>
+                            <td class="player-value-cell">${formatCurrency(player.value)}</td>
+                            <td class="player-value-cell">${formatCurrency(player.salary)}/sem</td> <!-- NOVO -->
+                            <td>
+                                <button class="action-button buy-player-button" data-player-id="${player.player_id}" data-team-id="${team.team_id}">Comprar</button>
+                            </td>
+                        `;
+                        marketTableBody.appendChild(row);
+                    });
+                });
+            }
+
+
+            // --- FUNÇÕES DE RENDERIZAÇÃO (TELA 1) ---
+
+            function renderTeams(teams) {
+                teamsListContainer.innerHTML = '';
+                teams.forEach(team => {
+                    const teamCard = document.createElement('article');
+                    teamCard.className = 'team-card';
+
+                    const words = team.team_name.split(' ');
+                    let initials = words[0][0];
+                    if (words.length > 1) { initials = words[0][0] + words[words.length - 1][0]; }
+                    initials = initials.toUpperCase();
+                    const color = teamColors[team.team_id % teamColors.length];
+
+                    let playersHtml = '<ul>';
+                    team.players.slice(0, 5).forEach(player => {
+                        playersHtml += `
+                            <li class="player-item" data-team-id="${player.original_team_id}" data-player-id="${player.player_id}">
+                                <div>
+                                    <span class="player-name">${player.name}</span>
+                                    <span class="player-position">(${player.position})</span>
+                                </div>
+                                <span class="player-overall" title="Geral">${player.attributes.geral}</span>
+                            </li>
+                        `;
+                    });
+                    playersHtml += '<li>...e mais 17</li></ul>'; 
+
+                    teamCard.innerHTML = `
+                        <div class="team-card-header">
+                            <div class="team-logo" style="background-color: ${color};">${initials}</div>
+                            <h2>${team.team_name}</h2>
+                        </div>
+                        <div class="team-players-list">
+                            ${playersHtml}
+                        </div>
+                        <div class="team-card-footer">
+                            <button class="train-team-button" data-team-id="${team.team_id}">Treinar este time</button>
+                        </div>
+                    `;
+                    teamsListContainer.appendChild(teamCard);
+                });
+            }
+            
+            // --- EVENT LISTENERS (ESPALHADOS) ---
+
+            // Filtro de busca (Tela 1)
+            searchBar.addEventListener('input', (event) => {
+                const searchTerm = event.target.value.toLowerCase();
+                const allTeamCards = document.querySelectorAll('.team-card');
+                allTeamCards.forEach(card => {
+                    const cardText = card.textContent.toLowerCase();
+                    if (cardText.includes(searchTerm)) { card.style.display = 'flex'; } 
+                    else { card.style.display = 'none'; }
+                });
+            });
+
+            // Listener GERAL da Tela 1 (Seleção)
+            teamsListContainer.addEventListener('click', (event) => {
+                const playerItem = event.target.closest('.player-item');
+                if (playerItem) {
+                    openModalForPlayer(playerItem.dataset.teamId, playerItem.dataset.playerId);
+                    return;
+                }
+                
+                // ATUALIZADO: Lógica de "Treinar"
+                const trainButton = event.target.closest('.train-team-button');
+                if (trainButton) {
+                    const teamId = parseInt(trainButton.dataset.teamId);
+                    localStorage.setItem(SAVE_KEY_MY_CLUB_ID, teamId);
+                    localStorage.setItem(SAVE_KEY_LEAGUE_STATE, JSON.stringify(allTeamsData));
+                    localStorage.setItem(SAVE_KEY_GAME_WEEK, 1); // Salva a semana 1
+                    location.reload(); 
+                }
+            });
+            
+            // Listener da Tabela do Elenco (Tela 2)
+            squadTableBody.addEventListener('click', (event) => {
+                const playerRow = event.target.closest('.player-item');
+                if (playerRow && !event.target.closest('.sell-player-button')) {
+                    openModalForPlayer(playerRow.dataset.teamId, playerRow.dataset.playerId);
+                    return;
+                }
+                const sellButton = event.target.closest('.sell-player-button');
+                if (sellButton) {
+                    const playerId = sellButton.dataset.playerId;
+                    sellPlayer(playerId);
+                }
+            });
+
+            // Listener da Tabela do Mercado (Tela 2)
+            marketTableBody.addEventListener('click', (event) => {
+                const playerRow = event.target.closest('.player-item');
+                if (playerRow && !event.target.closest('.buy-player-button')) {
+                    openModalForPlayer(playerRow.dataset.teamId, playerRow.dataset.playerId);
+                    return;
+                }
+                const buyButton = event.target.closest('.buy-player-button');
+                if (buyButton) {
+                    const playerId = buyButton.dataset.playerId;
+                    const teamId = buyButton.dataset.teamId; 
+                    buyPlayer(playerId, teamId);
+                }
+            });
+
+            // Botão de "Sair" (Tela 2) - ATUALIZADO
+            resetButton.addEventListener('click', () => { resetGame(); });
+            
+            // NOVO: Listener do botão "Avançar Semana"
+            advanceWeekButton.addEventListener('click', () => {
+                advanceGameWeek();
+            });
+            
+            function resetGame() {
+                localStorage.removeItem(SAVE_KEY_MY_CLUB_ID); 
+                localStorage.removeItem(SAVE_KEY_LEAGUE_STATE);
+                localStorage.removeItem(SAVE_KEY_GAME_WEEK); // Limpa a semana
+                location.reload();
+            }
+            
+            // Listener das Abas (Tela 2)
+            tabsNav.addEventListener('click', (event) => {
+                const targetButton = event.target.closest('.tab-button');
+                if (!targetButton) return;
+                const tabId = targetButton.dataset.tab;
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                targetButton.classList.add('active');
+                tabContents.forEach(content => {
+                    content.id === `tab-${tabId}` ? content.classList.add('active') : content.classList.remove('active');
+                });
+            });
+            
+            // Listener do Filtro do Mercado (Tela 2)
+            marketSearch.addEventListener('input', (event) => {
+                const searchTerm = event.target.value.toLowerCase();
+                const allMarketRows = document.querySelectorAll('#market-table-body tr.market-player-row');
+                
+                allMarketRows.forEach(row => {
+                    const rowText = row.textContent.toLowerCase();
+                    if (rowText.includes(searchTerm)) { row.style.display = ''; } 
+                    else { row.style.display = 'none'; }
+                });
+            });
+
+            // --- LÓGICA DE TRANSFERÊNCIA (Fase 6) ---
+            
+            function buyPlayer(playerId, teamId) {
+                const sellingTeam = allTeamsData.find(t => t.team_id === parseInt(teamId));
+                const playerIndex = sellingTeam.players.findIndex(p => p.player_id === parseInt(playerId));
+                if (playerIndex === -1) { console.error("Jogador não encontrado."); return; }
+                const player = sellingTeam.players[playerIndex];
+                
+                if (myClubData.budget < player.value) {
+                    showNotification("Saldo insuficiente para contratar este jogador!", 'error');
+                    return;
+                }
+                
+                myClubData.budget -= player.value;
+                sellingTeam.budget += player.value;
+                
+                const [movedPlayer] = sellingTeam.players.splice(playerIndex, 1);
+                myClubData.players.push(movedPlayer);
+                
+                showNotification(`${player.name} contratado por ${formatCurrency(player.value)}!`, 'success');
+                
+                saveGameStateAndRerender();
+            }
+
+            function sellPlayer(playerId) {
+                
+                // NOVO: Regra de mínimo de 11 jogadores
+                if (myClubData.players.length <= 11) {
+                    showNotification("Seu time precisa de no mínimo 11 jogadores!", 'error');
+                    return; // Para a execução
+                }
+
+                const playerIndex = myClubData.players.findIndex(p => p.player_id === parseInt(playerId));
+                if (playerIndex === -1) { console.error("Jogador não encontrado."); return; }
+                
+                const player = myClubData.players[playerIndex];
+                
+                // LÓGICA DE VENDA ATUALIZADA:
+                // O jogador é "dispensado" (some do jogo) e você recebe o valor.
+                // Ele não volta para o time original.
+                
+                // 1. Recebe o dinheiro
+                myClubData.budget += player.value;
+                
+                // 2. Remove o jogador permanentemente do seu time
+                const [movedPlayer] = myClubData.players.splice(playerIndex, 1);
+                
+                showNotification(`${movedPlayer.name} foi vendido (dispensado) por ${formatCurrency(movedPlayer.value)}!`, 'success');
+                
+                // 3. Salva o novo estado do jogo e re-renderiza as tabelas
+                saveGameStateAndRerender();
+            }
+            
+            // --- NOVO: LÓGICA DE AVANÇO DE SEMANA ---
+            function advanceGameWeek() {
+                // 1. Calcula a folha salarial
+                let totalSalary = 0;
+                myClubData.players.forEach(player => {
+                    totalSalary += player.salary;
+                });
+                
+                // 2. Deduz do orçamento
+                myClubData.budget -= totalSalary;
+                
+                // 3. Incrementa a semana
+                gameWeek++;
+                
+                // 4. Mostra notificação
+                showNotification(`Pagamento de salários: ${formatCurrency(totalSalary)}.`, 'info');
+                
+                if(myClubData.budget < 0) {
+                    showNotification(`ATENÇÃO: Seu orçamento está negativo!`, 'error');
+                }
+                
+                // 5. Salva o jogo e re-renderiza
+                saveGameStateAndRerender();
+            }
+            
+            // Função de "Save" e "Refresh" (ATUALIZADA)
+            function saveGameStateAndRerender() {
+                // Salva o estado da liga E a semana atual
+                localStorage.setItem(SAVE_KEY_LEAGUE_STATE, JSON.stringify(allTeamsData));
+                localStorage.setItem(SAVE_KEY_GAME_WEEK, gameWeek);
+                
+                // Re-renderiza tudo
+                showManagerDashboard(myClubData);
+            }
+            
+            // --- Funções do Modal de Notificação (ATUALIZADA) ---
+            let notificationTimer;
+            function showNotification(message, type = 'error') { // type pode ser 'error', 'success', 'info'
+                if (notificationTimer) { clearTimeout(notificationTimer); }
+                
+                notificationMessage.textContent = message;
+                // Remove classes antigas e adiciona a nova
+                notificationModal.className = ''; 
+                notificationModal.classList.add(type); // Adiciona a classe do tipo (error, success, info)
+                notificationModal.classList.add('show');
+                
+                notificationTimer = setTimeout(() => {
+                    notificationModal.classList.remove('show');
+                }, 3000);
+            }
+
+            // --- Funções do Modal (ATUALIZADA) ---
+            function openModalForPlayer(teamId, playerId) {
+                // Encontra o jogador em QUALQUER time
+                let player = myClubData.players.find(p => p.player_id === parseInt(playerId));
+                let team = myClubData;
+                
+                if (!player) {
+                    for(const t of allTeamsData) {
+                        player = t.players.find(p => p.player_id === parseInt(playerId));
+                        if(player) {
+                            team = t;
+                            break;
+                        }
+                    }
+                }
+                
+                if (player && team) {
+                    showPlayerModal(player, team);
+                } else {
+                    console.error("Não foi possível encontrar o jogador para o modal.");
+                }
+            }
+
+            function showPlayerModal(player, team) {
+                modalPlayerName.textContent = player.name;
+                modalPlayerPosition.textContent = player.position;
+                modalPlayerOverall.textContent = player.attributes.geral;
+                modalTeamName.textContent = team.team_name;
+                modalPlayerValue.textContent = `Valor: ${formatCurrency(player.value)}`;
+                modalPlayerSalary.textContent = `Salário: ${formatCurrency(player.salary)} / semana`; // MOSTRA SALÁRIO
+                
+                modalAttributesGrid.innerHTML = '';
+                for (const attr in player.attributes) {
+                    if (attr !== 'geral') {
+                        const attrName = attr.charAt(0).toUpperCase() + attr.slice(1);
+                        const attrValue = player.attributes[attr];
+                        const item = document.createElement('div');
+                        item.className = 'attribute-item';
+                        item.innerHTML = `<span>${attrName}</span><span>${attrValue}</span>`;
+                        modalAttributesGrid.appendChild(item);
+                    }
+                }
+                modal.classList.add('show');
+            }
+            function closePlayerModal() { modal.classList.remove('show'); }
+            closeModalButton.addEventListener('click', closePlayerModal);
+            modal.addEventListener('click', (event) => { if (event.target === modal) { closePlayerModal(); } });
+
+        });
+    </script>
+
+</body>
+</html>
